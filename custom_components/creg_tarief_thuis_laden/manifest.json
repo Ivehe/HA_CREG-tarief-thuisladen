@@ -1,0 +1,13 @@
+{
+  "domain": "creg_tarief_thuis_laden",
+  "name": "CREG-tarief thuis laden",
+  "codeowners": [
+    "@IveHe"
+  ],
+  "dependencies": [],
+  "documentation": "https://github.com/Ivehe/HA_CREG-tarief-thuisladen",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/Ivehe/HA_CREG-tarief-thuisladen/issues",
+  "requirements": [],
+  "version": "1.0.0"
+}

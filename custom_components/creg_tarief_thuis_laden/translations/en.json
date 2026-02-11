@@ -1,0 +1,13 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "Service is already configured"
+        },
+        "step": {
+            "user": {
+                "title": "CREG-tarief thuis laden",
+                "description": "Do you want to set up the CREG integration?"
+            }
+        }
+    }
+}
