@@ -1,7 +1,32 @@
+# Copyright (c) 2026, Ive Herreman
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice,
+#    this list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+#    this list of conditions and the following disclaimer in the documentation
+#    and/or other materials provided with the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
 """The CREG-tarief thuis laden integration."""
+
 from __future__ import annotations
 
-import asyncio
 from datetime import timedelta, datetime
 import logging
 import csv
@@ -10,10 +35,8 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.update_coordinator import (
-    DataUpdateCoordinator,
-    UpdateFailed,
-)
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN, CONF_URL
 
@@ -48,14 +71,9 @@ class CregDataUpdateCoordinator(DataUpdateCoordinator):
 
     def __init__(self, hass: HomeAssistant) -> None:
         """Initialize."""
-        super().__init__(
-            hass,
-            _LOGGER,
-            name=DOMAIN,
-            update_interval=timedelta(hours=24),
-        )
+        super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=timedelta(hours=24))
 
-    async def _async_update_data(self):
+    async def _async_update_data(self) -> dict[str, float]:
         """Fetch data from CREG CSV."""
         session = async_get_clientsession(self.hass)
         try:
@@ -72,14 +90,16 @@ class CregDataUpdateCoordinator(DataUpdateCoordinator):
         # Use semi-colon delimiter
         lines = text.splitlines()
         reader = csv.reader(lines, delimiter=";")
-        
+
         # Skip header
         rows = list(reader)
-        if not rows:
-             raise UpdateFailed("CSV is empty")
+        if len(rows) < 2:
+            raise UpdateFailed("CSV has no data rows")
+
+        rows = rows[1:]
 
         # Determine target year/month based on current date
-        now = datetime.now()
+        now = dt_util.now()
         current_month = now.month
         current_year = now.year
 
@@ -88,7 +108,7 @@ class CregDataUpdateCoordinator(DataUpdateCoordinator):
         # Q2 (Apr-Jun) -> Look for Curr Year, Month 1
         # Q3 (Jul-Sep) -> Look for Curr Year, Month 4
         # Q4 (Oct-Dec) -> Look for Curr Year, Month 7
-        
+
         if 1 <= current_month <= 3:
             target_year = current_year - 1
             target_month = 10
@@ -102,7 +122,12 @@ class CregDataUpdateCoordinator(DataUpdateCoordinator):
             target_year = current_year
             target_month = 7
 
-        _LOGGER.debug(f"Looking for Year={target_year}, Month={target_month} for Current Date={now}")
+        _LOGGER.debug(
+            "Looking for Year=%s, Month=%s (Current Date=%s)",
+            target_year,
+            target_month,
+            now,
+        )
 
         # Indices (0-based) based on User Input:
         # Year: 0
@@ -110,11 +135,11 @@ class CregDataUpdateCoordinator(DataUpdateCoordinator):
         # Flanders: 3
         # Brussels: 5
         # Wallonia: 7
-        
+
         for row in rows:
             if len(row) < 8:
                 continue
-                
+
             try:
                 row_year = int(row[0])
                 row_month = int(row[1])
